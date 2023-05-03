@@ -4,10 +4,6 @@ import matplotlib.pyplot as plt
 import csv
 
 
-##############################################################################
-# plot grid
-##############################################################################
-
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
     print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
@@ -31,7 +27,6 @@ def make_grid(filename, depth):
     global l_replace2
     arrayDepth = read_csv(filename)
     mas = []
-    a = 18
     for row1 in arrayDepth:
         l_replace2 = [1 if (i == 9999.0 or i < depth) else 0 for i in row1]
         mas.append(l_replace2)
@@ -39,22 +34,24 @@ def make_grid(filename, depth):
 
 
 # Make more wind
-def make_more_wind(filename, fileres, param):
+def make_more_wind(filename, file_res, param):
     global l_replace2
     arrayDepth = read_csv(filename)
     mas = []
-    a = 18
     for row1 in arrayDepth:
         l_replace2 = [i + param for i in row1]
         mas.append(l_replace2)
-    with open(fileres, 'w', newline='') as file:
-        mywriter = csv.writer(file, delimiter=',')
-        mywriter.writerows(mas)
+    with open(file_res, 'w', newline='') as file:
+        my_writer = csv.writer(file, delimiter=',')
+        my_writer.writerows(mas)
     return mas
 
 
-# Make a grid for algorithm
-res = make_grid('depth.csv', 2)
+#############################################################################
+# Get ready for the algorithm
+#############################################################################
+
+res = make_grid('depth1.csv', 2)
 print(res)
 
 # Make new grid with more wind
@@ -62,105 +59,129 @@ result_wind = make_more_wind('wind1hour.csv', 'wind2hour.csv', 3)
 result_wind2 = make_more_wind('wind2hour.csv', 'wind3hour.csv', 4)
 result_wind3 = make_more_wind('wind3hour.csv', 'wind4hour.csv', -1)
 
-#############################################################################
-# Get ready for the algorithm
-#############################################################################
-
 mydata = res  # pd.read_csv("grid31x10.csv")
 grid = np.array(mydata)
 
 # start point and goal
 
-start = (0, 0)
-goal = (11, 8)
+start = (2, 2)
+goal = (8, 3)
 
 
 #############################################################################
-# heuristic function for path scoring
+# Heuristic function for path scoring
 #############################################################################
 
-# Можно здесь поменять эвристику на формулу скорости в каждой точке
+# Сhange the heuristic here to the speed formula at each point
+# a - current, b - neighbour
+
 def heuristic(a, b):
     return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
 
+#############################################################################
+# Load wind direction data
+#############################################################################
+
+wind_dir = read_csv('wind_direction.csv')
+
+
 ##############################################################################
-# path finding function
+# Path finding function
 ##############################################################################
 
-def astar(array, start, goal):
+def astar(array, start_point, goal_point):
+    # Neighborhood. You can try to modify it here and expand to 16/24.
+    # Or iterate over the neighborhood depending on the situation
 
-    # Окрестность. Можно попытаться модифицировать именно здесь и расширить до 16/24. Или перебирать
-    # окрестности в зависимости от ситуации
+    neighbors8 = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
-    # Окрестность 8 соседей
-    neighbors16 = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+    neighbours16 = [(0, 2), (0, -2), (2, 0), (-2, 0), (2, 2), (2, -2), (-2, 2), (-2, -2), (-1, 2), (1, 2), (2, 1),
+                    (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1)]
 
-    # Окрестность 16 соседей
-    neighbors = [(0, 2), (0, -2), (2, 0), (-2, 0), (2, 2), (2, -2), (-2, 2), (-2, -2), (-1, 2), (1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1)]
     close_set = set()
     came_from = {}
-    gscore = {start: 0}
-    fscore = {start: heuristic(start, goal)}
-    oheap = []
-    heapq.heappush(oheap, (fscore[start], start))
-    while oheap:
-        current = heapq.heappop(oheap)[1]
-        if current == goal:
+    g_score = {start_point: 0}
+    f_score = {start_point: heuristic(start_point, goal_point)}
+    o_heap = []
+    heapq.heappush(o_heap, (f_score[start_point], start_point))
+
+    while o_heap:
+        current = heapq.heappop(o_heap)[1]
+        if current == goal_point:
             data = []
             while current in came_from:
                 data.append(current)
                 current = came_from[current]
             return data
         close_set.add(current)
-        for i, j in neighbors:
-            neighbor = current[0] + i, current[1] + j
-            tentative_g_score = gscore[current] + heuristic(current, neighbor)
-            if 0 <= neighbor[0] < array.shape[0]:
-                if 0 <= neighbor[1] < array.shape[1]:
-                    if array[neighbor[0]][neighbor[1]] == 1 or array[neighbor[0]-1][neighbor[1]] == 1 \
-                            or array[neighbor[0]][neighbor[1]-1] == 1 or array[neighbor[0]-1][neighbor[1]-1] == 1:
-                            #or array[neighbor[0]+1][neighbor[1]-1] or array[neighbor[0]+1][neighbor[1]+1] \
-                            #or array[neighbor[0]-1][neighbor[1]+1]:
+        for i, j in neighbours16:
+            neighbour = current[0] + i, current[1] + j
+            # upwind restrictions
+            if i == -2 and j == 0 and wind_dir[neighbour[0]][neighbour[1]] == 0 or \
+                    i == -2 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 45 or \
+                    i == 0 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 90 or \
+                    i == 2 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 135 or \
+                    i == 2 and j == 0 and wind_dir[neighbour[0]][neighbour[1]] == 180 or \
+                    i == 2 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 225 or \
+                    i == 0 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 270 or \
+                    i == -2 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 315:
+                above_wind = 1
+            else:
+                above_wind = 0
+            if above_wind != 1:  # death zone with headwind
+                tentative_g_score = g_score[current] + heuristic(current, neighbour)
+                if 0 <= neighbour[0] < array.shape[0]:
+                    if 0 <= neighbour[1] < array.shape[1]:  # избегать препятствия "внутри окрестностей"
+                        if array[neighbour[0]][neighbour[1]] == 1 or array[neighbour[0] - 1][neighbour[1]] == 1 \
+                                or array[neighbour[0]][neighbour[1] - 1] == 1 or array[neighbour[0]][
+                            neighbour[1]] == 1 or array[neighbour[0] + 1][neighbour[1] - 1] == 1 or \
+                                array[neighbour[0] + 1][neighbour[1] + 1] == 1 \
+                                or array[neighbour[0] - 1][neighbour[1] + 1] == 1:
+                            continue
+                    else:
+                        # array bound y walls
                         continue
-                else:
-                    # array bound y walls
-                    continue
             else:
                 # array bound x walls
                 continue
-            if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
+
+            # Compare f
+            if neighbour in close_set and tentative_g_score >= g_score.get(neighbour, 0):
                 continue
-            if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
-                came_from[neighbor] = current
-                gscore[neighbor] = tentative_g_score
-                fscore[neighbor] = tentative_g_score + heuristic(neighbor, goal)
-                heapq.heappush(oheap, (fscore[neighbor], neighbor))
+            if tentative_g_score < g_score.get(neighbour, 0) or neighbour not in [i[1] for i in o_heap]:
+                came_from[neighbour] = current
+                g_score[neighbour] = tentative_g_score
+                f_score[neighbour] = tentative_g_score + heuristic(neighbour, goal_point)
+                heapq.heappush(o_heap, (f_score[neighbour], neighbour))
     return False
 
+
+##############################################################################
+# Calculate route
+##############################################################################
 
 route = astar(grid, start, goal)
 route = route + [start]
 route = route[::-1]
 print(route)
 
-
 ##############################################################################
-# plot the path
+# Plot the path
 ##############################################################################
 
 # extract x and y coordinates from route list
-x_coords = []
-y_coords = []
+x_coordinates = []
+y_coordinates = []
 for i in (range(0, len(route))):
     x = route[i][0]
     y = route[i][1]
-    x_coords.append(x)
-    y_coords.append(y)
+    x_coordinates.append(x)
+    y_coordinates.append(y)
 # plot map and path
 fig, ax = plt.subplots(figsize=(20, 20))
-ax.imshow(grid, cmap=plt.cm.tab20c)
+ax.imshow(grid, cmap=plt.cm.tab10)
 ax.scatter(start[1], start[0], marker="*", color="blue", s=200)
 ax.scatter(goal[1], goal[0], marker="*", color="red", s=200)
-ax.plot(y_coords, x_coords, color="black")
+ax.plot(y_coordinates, x_coordinates, color="black")
 plt.show()

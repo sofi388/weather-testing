@@ -1,19 +1,9 @@
 import csv
 
+
 ##############################################################################
-# transform smth
+# Transform something
 ##############################################################################
-
-
-# with open("grid31x10.csv") as csvfile:
-#   reader = csv.reader(csvfile, quoting=csv.QUOTE_NON-NUMERIC) # change contents to floats
-# for row in reader: # each row is a list
-#     results.append(row)
-
-#  grid = np.array(row)
-
-#results = []
-#mydata = pd.read_csv("depth.csv")
 
 
 def read_csv(filename):
@@ -35,4 +25,3 @@ def make_grid(filename, depth):
 
 res = make_grid('../AStar/depth.csv', 2)
 print(res)
-
