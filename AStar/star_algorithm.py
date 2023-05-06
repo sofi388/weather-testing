@@ -1,7 +1,9 @@
-import numpy as np
-import heapq
-import matplotlib.pyplot as plt
 import csv
+import heapq
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import colors
 
 
 def print_hi(name):
@@ -51,18 +53,14 @@ def make_more_wind(filename, file_res, param):
 # Get ready for the algorithm
 #############################################################################
 
-res = make_grid('depth1.csv', 2)
+res = make_grid('wind_strength.csv', 1)
 print(res)
-
-# Make new grid with more wind
-result_wind = make_more_wind('wind1hour.csv', 'wind2hour.csv', 3)
-result_wind2 = make_more_wind('wind2hour.csv', 'wind3hour.csv', 4)
-result_wind3 = make_more_wind('wind3hour.csv', 'wind4hour.csv', -1)
-
-mydata = res  # pd.read_csv("grid31x10.csv")
+mydata = res
 grid = np.array(mydata)
 
-# start point and goal
+data = read_csv('wind_strength.csv')
+
+# Starting point and goal point
 
 start = (2, 2)
 goal = (8, 3)
@@ -72,11 +70,15 @@ goal = (8, 3)
 # Heuristic function for path scoring
 #############################################################################
 
-# Сhange the heuristic here to the speed formula at each point
+# Change the heuristic here to the speed formula at each point
 # a - current, b - neighbour
 
 def heuristic(a, b):
     return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
+
+
+def wind_heuristic(a, b, wind_str):
+    return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) + 1 / wind_str[b[0]][b[1]]
 
 
 #############################################################################
@@ -84,6 +86,7 @@ def heuristic(a, b):
 #############################################################################
 
 wind_dir = read_csv('wind_direction.csv')
+wind_strength = read_csv('wind_strength.csv')
 
 
 ##############################################################################
@@ -117,7 +120,7 @@ def astar(array, start_point, goal_point):
         close_set.add(current)
         for i, j in neighbours16:
             neighbour = current[0] + i, current[1] + j
-            # upwind restrictions
+            # upwind restrictions for 16 neighbourhood
             if i == -2 and j == 0 and wind_dir[neighbour[0]][neighbour[1]] == 0 or \
                     i == -2 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 45 or \
                     i == 0 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 90 or \
@@ -131,6 +134,8 @@ def astar(array, start_point, goal_point):
                 above_wind = 0
             if above_wind != 1:  # death zone with headwind
                 tentative_g_score = g_score[current] + heuristic(current, neighbour)
+                tentative_g_score = g_score[current] + wind_heuristic(current, neighbour,
+                                                                      wind_strength)  # heuristic(current, neighbour)
                 if 0 <= neighbour[0] < array.shape[0]:
                     if 0 <= neighbour[1] < array.shape[1]:  # избегать препятствия "внутри окрестностей"
                         if array[neighbour[0]][neighbour[1]] == 1 or array[neighbour[0] - 1][neighbour[1]] == 1 \
@@ -179,8 +184,18 @@ for i in (range(0, len(route))):
     x_coordinates.append(x)
     y_coordinates.append(y)
 # plot map and path
+
+data = read_csv('wind_strength.csv')
+cmap = colors.ListedColormap(
+    ['#6271b7', '#5069AB', '#39619f', '#427DA4', '#4a94a9', '#4C9094', '#4d8d7b', '#509969', '#53a553', '#46A246',
+     '#359f35', '#7C9E44', '#a79d51', '#A38E46', '#9f7f3a', '#AC632C', '#b83c17', '#813a4e',
+     '#af5088', '#754a93', '#6d61a3', '#6a513c'])
+bounds = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 19.0, 21.0, 23.0,
+          25.0, 27.0, 9998.0]
+norm2 = colors.BoundaryNorm(bounds, cmap.N)
+
 fig, ax = plt.subplots(figsize=(20, 20))
-ax.imshow(grid, cmap=plt.cm.tab10)
+ax.imshow(data, cmap=cmap, norm=norm2)
 ax.scatter(start[1], start[0], marker="*", color="blue", s=200)
 ax.scatter(goal[1], goal[0], marker="*", color="red", s=200)
 ax.plot(y_coordinates, x_coordinates, color="black")
