@@ -49,21 +49,33 @@ def make_more_wind(filename, file_res, param):
     return mas
 
 
+# Make one combined map with wind & surface
+def wind_and_surface(file_wind, file_surface):
+    global l_replace
+    arrayWind = read_csv(file_wind)
+    arraySurface = read_csv(file_surface)
+    mas = []
+    for row in arraySurface:
+        for i in row:
+            if i == 9999:
+                var = arrayWind[i] == 9999
+
+
 #############################################################################
 # Get ready for the algorithm
 #############################################################################
 
-res = make_grid('wind_strength.csv', 1)
+res = make_grid('50x50/wind_strength.csv', 1)
 print(res)
 mydata = res
 grid = np.array(mydata)
 
-data = read_csv('wind_strength.csv')
+data = read_csv('50x50/wind_strength.csv')
 
 # Starting point and goal point
 
-start = (2, 2)
-goal = (8, 3)
+start = (3, 3)
+goal = (13, 3)
 
 
 #############################################################################
@@ -85,15 +97,15 @@ def wind_heuristic(a, b, wind_str):
 # Load wind direction data
 #############################################################################
 
-wind_dir = read_csv('wind_direction.csv')
-wind_strength = read_csv('wind_strength.csv')
+wind_dir = read_csv('50x50/wind_direction.csv')
+wind_strength = read_csv('50x50/wind_strength.csv')
 
 
 ##############################################################################
 # Path finding function
 ##############################################################################
 
-def astar(array, start_point, goal_point):
+def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind):
     # Neighborhood. You can try to modify it here and expand to 16/24.
     # Or iterate over the neighborhood depending on the situation
 
@@ -120,33 +132,43 @@ def astar(array, start_point, goal_point):
         close_set.add(current)
         for i, j in neighbours16:
             neighbour = current[0] + i, current[1] + j
-            # upwind restrictions for 16 neighbourhood
-            if i == -2 and j == 0 and wind_dir[neighbour[0]][neighbour[1]] == 0 or \
-                    i == -2 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 45 or \
-                    i == 0 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 90 or \
-                    i == 2 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 135 or \
-                    i == 2 and j == 0 and wind_dir[neighbour[0]][neighbour[1]] == 180 or \
-                    i == 2 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 225 or \
-                    i == 0 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 270 or \
-                    i == -2 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 315:
-                above_wind = 1
-            else:
-                above_wind = 0
-            if above_wind != 1:  # death zone with headwind
-                tentative_g_score = g_score[current] + heuristic(current, neighbour)
-                tentative_g_score = g_score[current] + wind_heuristic(current, neighbour,
-                                                                      wind_strength)  # heuristic(current, neighbour)
-                if 0 <= neighbour[0] < array.shape[0]:
-                    if 0 <= neighbour[1] < array.shape[1]:  # избегать препятствия "внутри окрестностей"
-                        if array[neighbour[0]][neighbour[1]] == 1 or array[neighbour[0] - 1][neighbour[1]] == 1 \
-                                or array[neighbour[0]][neighbour[1] - 1] == 1 or array[neighbour[0]][
-                            neighbour[1]] == 1 or array[neighbour[0] + 1][neighbour[1] - 1] == 1 or \
-                                array[neighbour[0] + 1][neighbour[1] + 1] == 1 \
-                                or array[neighbour[0] - 1][neighbour[1] + 1] == 1:
+            above_wind = 0
+            bad_wind_flag = 0
+            # upwind restrictions for 16 neighbours
+            if vessel_type == 1:
+                if i == -2 and j == 0 and wind_dir[neighbour[0]][neighbour[1]] == 0 or \
+                        i == -2 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 45 or \
+                        i == 0 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 90 or \
+                        i == 2 and j == 2 and wind_dir[neighbour[0]][neighbour[1]] == 135 or \
+                        i == 2 and j == 0 and wind_dir[neighbour[0]][neighbour[1]] == 180 or \
+                        i == 2 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 225 or \
+                        i == 0 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 270 or \
+                        i == -2 and j == -2 and wind_dir[neighbour[0]][neighbour[1]] == 315:
+                    above_wind = 1
+                else:
+                    above_wind = 0
+                if wind_strength[neighbour[0]][neighbour[1]] <= min_wind or wind_strength[neighbour[0]][neighbour[1]] >= max_wind:  # TEST THIS!!!!!!!!!
+                    bad_wind_flag = 1
+                else:
+                    bad_wind_flag = 0
+            if above_wind != 1:  # not death zone with headwind
+                if bad_wind_flag != 1:  # not zero wind or not crucial wind
+                    if vessel_type == 1:  # vessel is a sailboat
+                        tentative_g_score = g_score[current] + wind_heuristic(current, neighbour,
+                                                                              wind_strength)  # heuristic(current, neighbour)
+                    else: # vessel is a motorboat
+                        tentative_g_score = g_score[current] + heuristic(current, neighbour)
+                    if 0 <= neighbour[0] < array.shape[0]:
+                        if 0 <= neighbour[1] < array.shape[1]:  # избегать препятствия "внутри окрестностей"
+                            if array[neighbour[0]][neighbour[1]] == 1 or array[neighbour[0] - 1][neighbour[1]] == 1 \
+                                    or array[neighbour[0]][neighbour[1] - 1] == 1 or array[neighbour[0]][
+                                neighbour[1]] == 1 or array[neighbour[0] + 1][neighbour[1] - 1] == 1 or \
+                                    array[neighbour[0] + 1][neighbour[1] + 1] == 1 \
+                                    or array[neighbour[0] - 1][neighbour[1] + 1] == 1:
+                                continue
+                        else:
+                            # array bound y walls
                             continue
-                    else:
-                        # array bound y walls
-                        continue
             else:
                 # array bound x walls
                 continue
@@ -165,8 +187,8 @@ def astar(array, start_point, goal_point):
 ##############################################################################
 # Calculate route
 ##############################################################################
-
-route = astar(grid, start, goal)
+# parameters: grid, start, goal, vessel_type, max_wind, min_wind
+route = astar(grid, start, goal, 1, 10, 2)
 route = route + [start]
 route = route[::-1]
 print(route)
@@ -185,16 +207,19 @@ for i in (range(0, len(route))):
     y_coordinates.append(y)
 # plot map and path
 
-data = read_csv('wind_strength.csv')
+
+# необходимо сделать метод "совмещенной карты"
+data = read_csv('50x50/wind_strength.csv')
+# '#6271b7'
 cmap = colors.ListedColormap(
-    ['#6271b7', '#5069AB', '#39619f', '#427DA4', '#4a94a9', '#4C9094', '#4d8d7b', '#509969', '#53a553', '#46A246',
+    ['#6e6e6e', '#5069AB', '#39619f', '#427DA4', '#4a94a9', '#4C9094', '#4d8d7b', '#509969', '#53a553', '#46A246',
      '#359f35', '#7C9E44', '#a79d51', '#A38E46', '#9f7f3a', '#AC632C', '#b83c17', '#813a4e',
      '#af5088', '#754a93', '#6d61a3', '#6a513c'])
-bounds = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 19.0, 21.0, 23.0,
+bounds = [0.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 19.0, 21.0, 23.0,
           25.0, 27.0, 9998.0]
 norm2 = colors.BoundaryNorm(bounds, cmap.N)
 
-fig, ax = plt.subplots(figsize=(20, 20))
+fig, ax = plt.subplots(figsize=(50, 50))
 ax.imshow(data, cmap=cmap, norm=norm2)
 ax.scatter(start[1], start[0], marker="*", color="blue", s=200)
 ax.scatter(goal[1], goal[0], marker="*", color="red", s=200)
