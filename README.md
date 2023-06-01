@@ -11,12 +11,12 @@ allows you to build trajectories for both a motorized vessel and a sailing vesse
 
 ## Table of Contents 
 
+AStar - main package with modified A* algorithm
+DataView - package to test/modify the view of some data
+Wind - example of how to display wind speed and direction
+
 ## Usage
 
-## License
-
-## Features
-
-## How to Contribute
+Just run the star_algorithm.py script
 
 ## Tests
