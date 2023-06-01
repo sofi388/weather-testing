@@ -5,6 +5,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import colors
 
+#############################################################################
+# Polar diagram for elan sailboat
+#############################################################################
+elan_speed = [[2, 2.5, 4.2, 4.8, 4.9, 4.2, 3, 2],  # 1 m/s
+              [2, 2.5, 4.2, 4.8, 4.9, 4.2, 3, 2],  # 2 m/s
+              [3, 3.9, 6, 5.8, 5.5, 4, 3.5, 3.3],  # 3 m/s
+              [3, 3.9, 6, 5.8, 5.5, 4, 3.5, 3.3],  # 4 m/s
+              [5, 6, 7, 7.9, 7.5, 7, 5.5, 3.9],  # 5 m/s
+              [5, 6, 7, 7.9, 7.5, 7, 5.5, 3.9],  # 6 m/s
+              [5.5, 6, 7, 8.2, 8.2, 7.7, 6.9, 5.6],  # 7 m/s
+              [5.5, 6, 7, 8.2, 8.2, 7.7, 6.9, 5.6],  # 8 m/s
+              [6.3, 7.2, 8.3, 8.5, 9, 9.6, 8.5, 7.8],  # 9 m/s
+              [6.3, 7.2, 8.3, 8.5, 9, 9.6, 8.5, 7.8],  # 10 m/s
+              [6.4, 7.5, 8.5, 9.5, 10.2, 11, 9.5, 8.8],  # 11 m/s
+              [6.4, 7.5, 8.5, 9.5, 10.2, 11, 9.5, 8.8],  # 12 m/s
+              [6.9, 7.8, 8.7, 9.9, 10.2, 12, 11.4, 10.2],  # 13 m/s
+              [6.9, 7.8, 8.7, 9.9, 10.2, 12, 11.4, 10.2], ]  # 14 m/s
+
+
+#############################################################################
+# Some functions
+#############################################################################
 
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
@@ -65,17 +87,11 @@ def wind_and_surface(file_wind, file_surface):
 # Get ready for the algorithm
 #############################################################################
 
-res = make_grid('50x50/wind_strength.csv', 1)
-print(res)
+res = make_grid('100x100/wind_strength_1.csv', 1)
 mydata = res
 grid = np.array(mydata)
 
-data = read_csv('50x50/wind_strength.csv')
-
-# Starting point and goal point
-
-start = (3, 3)
-goal = (13, 3)
+data = read_csv('100x100/wind_strength_1.csv')
 
 
 #############################################################################
@@ -97,19 +113,18 @@ def wind_heuristic(a, b, wind_str):
 # Load wind direction data
 #############################################################################
 
-wind_dir = read_csv('50x50/wind_direction.csv')
-wind_strength = read_csv('50x50/wind_strength.csv')
-
+wind_dir = read_csv('100x100/wind_direction.csv')
+wind_strength = read_csv('100x100/wind_strength_1.csv')
 
 ##############################################################################
 # Path finding function
 ##############################################################################
+wind_vec_path = []
 
-def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind):
+
+def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind, hybrid):
     # Neighborhood. You can try to modify it here and expand to 16/24.
     # Or iterate over the neighborhood depending on the situation
-
-    neighbors8 = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
     neighbours16 = [(0, 2), (0, -2), (2, 0), (-2, 0), (2, 2), (2, -2), (-2, 2), (-2, -2), (-1, 2), (1, 2), (2, 1),
                     (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1)]
@@ -120,6 +135,7 @@ def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind):
     f_score = {start_point: heuristic(start_point, goal_point)}
     o_heap = []
     heapq.heappush(o_heap, (f_score[start_point], start_point))
+    time_count = 0
 
     while o_heap:
         current = heapq.heappop(o_heap)[1]
@@ -133,7 +149,8 @@ def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind):
         for i, j in neighbours16:
             neighbour = current[0] + i, current[1] + j
             above_wind = 0
-            bad_wind_flag = 0
+            strong_wind_flag = 0
+            light_wind_flag = 0
             # upwind restrictions for 16 neighbours
             if vessel_type == 1:
                 if i == -2 and j == 0 and wind_dir[neighbour[0]][neighbour[1]] == 0 or \
@@ -147,28 +164,50 @@ def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind):
                     above_wind = 1
                 else:
                     above_wind = 0
-                if wind_strength[neighbour[0]][neighbour[1]] <= min_wind or wind_strength[neighbour[0]][neighbour[1]] >= max_wind:  # TEST THIS!!!!!!!!!
-                    bad_wind_flag = 1
+                if wind_strength[neighbour[0]][neighbour[1]] >= max_wind:
+                    strong_wind_flag = 1
                 else:
-                    bad_wind_flag = 0
-            if above_wind != 1:  # not death zone with headwind
-                if bad_wind_flag != 1:  # not zero wind or not crucial wind
-                    if vessel_type == 1:  # vessel is a sailboat
-                        tentative_g_score = g_score[current] + wind_heuristic(current, neighbour,
-                                                                              wind_strength)  # heuristic(current, neighbour)
-                    else: # vessel is a motorboat
-                        tentative_g_score = g_score[current] + heuristic(current, neighbour)
-                    if 0 <= neighbour[0] < array.shape[0]:
-                        if 0 <= neighbour[1] < array.shape[1]:  # избегать препятствия "внутри окрестностей"
-                            if array[neighbour[0]][neighbour[1]] == 1 or array[neighbour[0] - 1][neighbour[1]] == 1 \
-                                    or array[neighbour[0]][neighbour[1] - 1] == 1 or array[neighbour[0]][
-                                neighbour[1]] == 1 or array[neighbour[0] + 1][neighbour[1] - 1] == 1 or \
-                                    array[neighbour[0] + 1][neighbour[1] + 1] == 1 \
-                                    or array[neighbour[0] - 1][neighbour[1] + 1] == 1:
+                    strong_wind_flag = 0
+
+                if wind_strength[neighbour[0]][neighbour[1]] <= min_wind:
+                    light_wind_flag = 1
+                else:
+                    light_wind_flag = 0
+            if wind_strength[neighbour[0]][neighbour[1]] >= 24:
+                surface = 1
+            else:
+                surface = 0
+            if above_wind != 1 or (hybrid == 1 and light_wind_flag == 1):  # not death zone with headwind
+                if strong_wind_flag != 1 or vessel_type == 0:  # not crucial wind
+                    if surface != 1:
+                        if vessel_type == 1 and hybrid == 0:  # vessel is a sailboat, hybrid no
+                            tentative_g_score = g_score[current] + wind_heuristic(current, neighbour,
+                                                                                  wind_strength)
+                        if vessel_type == 1 and hybrid == 1:  # vessel is a sailboat, hybrid yes
+                            if light_wind_flag != 1:
+                                tentative_g_score = g_score[current] + wind_heuristic(current, neighbour,
+                                                                                      wind_strength)
+                            else:
+                                tentative_g_score = g_score[current] + heuristic(current, neighbour)
+                        if vessel_type == 0:  # vessel is a motorboat
+                            tentative_g_score = g_score[current] + heuristic(current, neighbour)
+
+                        if 0 <= neighbour[0] < array.shape[0]:
+                            if 0 <= neighbour[1] < array.shape[1]:  # избегать препятствия "внутри окрестностей"
+                                if array[neighbour[0]][neighbour[1]] == 1 or array[neighbour[0] - 1][neighbour[1]] == 1 \
+                                        or array[neighbour[0]][neighbour[1] - 1] == 1 or array[neighbour[0]][
+                                    neighbour[1]] == 1 or array[neighbour[0] + 1][neighbour[1] - 1] == 1 or \
+                                        array[neighbour[0] + 1][neighbour[1] + 1] == 1 \
+                                        or array[neighbour[0] - 1][neighbour[1] + 1] == 1:
+                                    continue
+                            else:
+                                # array bound y walls
                                 continue
-                        else:
-                            # array bound y walls
-                            continue
+                    else:
+                        continue
+                else:
+
+                    continue
             else:
                 # array bound x walls
                 continue
@@ -181,47 +220,157 @@ def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind):
                 g_score[neighbour] = tentative_g_score
                 f_score[neighbour] = tentative_g_score + heuristic(neighbour, goal_point)
                 heapq.heappush(o_heap, (f_score[neighbour], neighbour))
+
     return False
 
 
 ##############################################################################
 # Calculate route
 ##############################################################################
-# parameters: grid, start, goal, vessel_type, max_wind, min_wind
-route = astar(grid, start, goal, 1, 10, 2)
-route = route + [start]
-route = route[::-1]
-print(route)
+# Starting point and goal point, other parameters
+
+# case 1: avoid strong wind
+# start = (3, 3)
+# goal = (10, 40)
+
+# case 2: upwind story
+# start = (3, 3)
+# goal = (30, 3)
+
+# case 3: 100x100 upwind
+# start = (6, 6)
+# goal = (61, 6)
+
+# case 3: 100x100 avoid strong wind
+start = (6, 6)
+goal = (19, 81)
+
+##############################################################################
+# Parameters
+##############################################################################
+motor_speed = 15  # 15 knt
+map_scale = 1.1  # 1 cell is 1.1 mile
+max_wind = 13
+min_wind = 2
+
+##############################################################################
+# route sailing
+##############################################################################
+s_route = astar(grid, start, goal, 1, max_wind, min_wind, 0)
+s_route = s_route + [start]
+s_route = s_route[::-1]
+print(s_route)
+
+# extract x and y coordinates from 1 route list
+x_coordinates = []
+y_coordinates = []
+for i in (range(0, len(s_route))):
+    x = s_route[i][0]
+    y = s_route[i][1]
+    x_coordinates.append(x)
+    y_coordinates.append(y)
+
+##############################################################################
+# route power
+##############################################################################
+m_route = astar(grid, start, goal, 0, max_wind, min_wind, 0)
+m_route = m_route + [start]
+m_route = m_route[::-1]
+print(m_route)
+
+# extract x and y coordinates from 2 route list
+x2_coordinates = []
+y2_coordinates = []
+for i in (range(0, len(m_route))):
+    x = m_route[i][0]
+    y = m_route[i][1]
+    x2_coordinates.append(x)
+    y2_coordinates.append(y)
+
+##############################################################################
+# route hybrid
+##############################################################################
+h_route = astar(grid, start, goal, 1, max_wind, min_wind, 1)
+h_route = h_route + [start]
+h_route = h_route[::-1]
+print(h_route)
+
+# extract x and y coordinates from 2 route list
+x3_coordinates = []
+y3_coordinates = []
+for i in (range(0, len(h_route))):
+    x = h_route[i][0]
+    y = h_route[i][1]
+    x3_coordinates.append(x)
+    y3_coordinates.append(y)
+
 
 ##############################################################################
 # Plot the path
 ##############################################################################
-
-# extract x and y coordinates from route list
-x_coordinates = []
-y_coordinates = []
-for i in (range(0, len(route))):
-    x = route[i][0]
-    y = route[i][1]
-    x_coordinates.append(x)
-    y_coordinates.append(y)
-# plot map and path
-
-
 # необходимо сделать метод "совмещенной карты"
-data = read_csv('50x50/wind_strength.csv')
+data = read_csv('100x100/wind_strength_3.csv')
 # '#6271b7'
 cmap = colors.ListedColormap(
     ['#6e6e6e', '#5069AB', '#39619f', '#427DA4', '#4a94a9', '#4C9094', '#4d8d7b', '#509969', '#53a553', '#46A246',
      '#359f35', '#7C9E44', '#a79d51', '#A38E46', '#9f7f3a', '#AC632C', '#b83c17', '#813a4e',
-     '#af5088', '#754a93', '#6d61a3', '#6a513c'])
-bounds = [0.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 19.0, 21.0, 23.0,
-          25.0, 27.0, 9998.0]
+     '#af5088', '#754a93', '#6d61a3', '#beb887'])
+bounds = [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 19.0, 21.0, 22.0,
+          23.0, 9998.0]
 norm2 = colors.BoundaryNorm(bounds, cmap.N)
-
-fig, ax = plt.subplots(figsize=(50, 50))
+# fig, ax = plt.subplots(figsize=(50, 50))
+fig, ax = plt.subplots(figsize=(100, 100))
 ax.imshow(data, cmap=cmap, norm=norm2)
 ax.scatter(start[1], start[0], marker="*", color="blue", s=200)
 ax.scatter(goal[1], goal[0], marker="*", color="red", s=200)
-ax.plot(y_coordinates, x_coordinates, color="black")
+ax.plot(y_coordinates, x_coordinates, color="black")  # sail
+ax.plot(y2_coordinates, x2_coordinates, color="green")  # motor
+ax.plot(y3_coordinates, x3_coordinates, color="red")  # hybrid
 plt.show()
+
+print(x2_coordinates)
+print(y2_coordinates)
+print(x3_coordinates)
+print(y3_coordinates)
+
+res = 0
+time = 0
+for index in range(len(x_coordinates) - 1):
+    dist = np.sqrt(
+        (x_coordinates[index] - x_coordinates[index + 1]) * (x_coordinates[index] - x_coordinates[index + 1]) + (
+
+                y_coordinates[index] - y_coordinates[index + 1]) * (
+                y_coordinates[index] - y_coordinates[index + 1]))
+    res += dist
+    time += dist / elan_speed[int(wind_strength[x_coordinates[index + 1]][y_coordinates[index + 1]]) - 1][
+        int(90 / 22.5) - 1]
+
+# Pick size 200 km x 200 km
+# cell = 2,2 miles
+print("\n Sail distance: ")
+print(res * map_scale)
+print(" miles")
+
+print("\n Sail time: ")
+print(time)
+print(" hours")
+
+res = 0
+time = 0
+for index in range(len(x2_coordinates) - 1):
+    dist = np.sqrt(
+        (x2_coordinates[index] - x2_coordinates[index + 1]) * (x2_coordinates[index] - x2_coordinates[index + 1]) + (
+                y2_coordinates[index] - y2_coordinates[index + 1]) * (
+                y2_coordinates[index] - y2_coordinates[index + 1]))
+    res += dist
+    time += dist / motor_speed
+
+print("\n Motor distance: ")
+print(res * map_scale)
+print(" miles")
+
+print("\n Motor time: ")
+print(time)
+print(" hours")
+
+# light_wind = make_more_wind('100x100/wind_strength_more.csv', '100x100/wind_strength_1.csv', -1)
