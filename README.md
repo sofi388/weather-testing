@@ -4,24 +4,19 @@
 
 Project within the final thesis, an elementary playground.
 
-## Task:
+Task:
 
-Modify the A* algorithm so that it builds a time-optimized path based on the 16 cell neighborhood, 
+Modify the A* algorithm so that it builds a time-optimized path based on the 16 (24) cell neighborhood, 
 allows you to build trajectories for both a motorized vessel and a sailing vessel using weather data and a sea depth map.
 
 ## Table of Contents 
 
-AStar
-- 50x50 array
-- 100x100 array
-- NetCDF reading module
-- star_algorithm
-
-Data View
-
-Wind
-
 ## Usage
 
-Run star_algorithm.py after all settings preconfigured 
+## License
 
+## Features
+
+## How to Contribute
+
+## Tests
