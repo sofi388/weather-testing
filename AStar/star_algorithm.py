@@ -87,11 +87,11 @@ def wind_and_surface(file_wind, file_surface):
 # Get ready for the algorithm
 #############################################################################
 
-res = make_grid('100x100/wind_strength_1.csv', 1)
+res = make_grid('100x100/wind_strength_more.csv', 1)
 mydata = res
 grid = np.array(mydata)
 
-data = read_csv('100x100/wind_strength_1.csv')
+data = read_csv('100x100/wind_strength_more.csv')
 
 
 #############################################################################
@@ -114,7 +114,7 @@ def wind_heuristic(a, b, wind_str):
 #############################################################################
 
 wind_dir = read_csv('100x100/wind_direction.csv')
-wind_strength = read_csv('100x100/wind_strength_1.csv')
+wind_strength = read_csv('100x100/wind_strength_more.csv')
 
 ##############################################################################
 # Path finding function
@@ -135,7 +135,6 @@ def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind, hybri
     f_score = {start_point: heuristic(start_point, goal_point)}
     o_heap = []
     heapq.heappush(o_heap, (f_score[start_point], start_point))
-    time_count = 0
 
     while o_heap:
         current = heapq.heappop(o_heap)[1]
@@ -241,20 +240,24 @@ def astar(array, start_point, goal_point, vessel_type, max_wind, min_wind, hybri
 # start = (6, 6)
 # goal = (61, 6)
 
-# case 3: 100x100 avoid strong wind
+# case 4: 100x100 avoid strong wind
 start = (6, 6)
-goal = (19, 81)
+goal = (18, 80)
+
+# case 5: 100x100 обходим остров
+# start = (7, 7)
+# goal = (40, 7)
 
 ##############################################################################
 # Parameters
 ##############################################################################
 motor_speed = 15  # 15 knt
 map_scale = 1.1  # 1 cell is 1.1 mile
-max_wind = 13
+max_wind = 14
 min_wind = 2
 
 ##############################################################################
-# route sailing
+# calculate sailing route
 ##############################################################################
 s_route = astar(grid, start, goal, 1, max_wind, min_wind, 0)
 s_route = s_route + [start]
@@ -271,7 +274,7 @@ for i in (range(0, len(s_route))):
     y_coordinates.append(y)
 
 ##############################################################################
-# route power
+# calculate power route
 ##############################################################################
 m_route = astar(grid, start, goal, 0, max_wind, min_wind, 0)
 m_route = m_route + [start]
@@ -288,7 +291,7 @@ for i in (range(0, len(m_route))):
     y2_coordinates.append(y)
 
 ##############################################################################
-# route hybrid
+# calculate hybrid route
 ##############################################################################
 h_route = astar(grid, start, goal, 1, max_wind, min_wind, 1)
 h_route = h_route + [start]
@@ -304,13 +307,11 @@ for i in (range(0, len(h_route))):
     x3_coordinates.append(x)
     y3_coordinates.append(y)
 
-
 ##############################################################################
 # Plot the path
 ##############################################################################
-# необходимо сделать метод "совмещенной карты"
-data = read_csv('100x100/wind_strength_3.csv')
-# '#6271b7'
+# метод "совмещенной карты"
+data = read_csv('100x100/wind_strength_more.csv')
 cmap = colors.ListedColormap(
     ['#6e6e6e', '#5069AB', '#39619f', '#427DA4', '#4a94a9', '#4C9094', '#4d8d7b', '#509969', '#53a553', '#46A246',
      '#359f35', '#7C9E44', '#a79d51', '#A38E46', '#9f7f3a', '#AC632C', '#b83c17', '#813a4e',
@@ -318,14 +319,13 @@ cmap = colors.ListedColormap(
 bounds = [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 19.0, 21.0, 22.0,
           23.0, 9998.0]
 norm2 = colors.BoundaryNorm(bounds, cmap.N)
-# fig, ax = plt.subplots(figsize=(50, 50))
 fig, ax = plt.subplots(figsize=(100, 100))
 ax.imshow(data, cmap=cmap, norm=norm2)
 ax.scatter(start[1], start[0], marker="*", color="blue", s=200)
 ax.scatter(goal[1], goal[0], marker="*", color="red", s=200)
 ax.plot(y_coordinates, x_coordinates, color="black")  # sail
-ax.plot(y2_coordinates, x2_coordinates, color="green")  # motor
-ax.plot(y3_coordinates, x3_coordinates, color="red")  # hybrid
+ax.plot(y2_coordinates, x2_coordinates, color="yellow")  # motor
+ax.plot(y3_coordinates, x3_coordinates, color="black")  # hybrid
 plt.show()
 
 print(x2_coordinates)
@@ -346,7 +346,7 @@ for index in range(len(x_coordinates) - 1):
         int(90 / 22.5) - 1]
 
 # Pick size 200 km x 200 km
-# cell = 2,2 miles
+# cell = 1,1 miles
 print("\n Sail distance: ")
 print(res * map_scale)
 print(" miles")
@@ -365,12 +365,12 @@ for index in range(len(x2_coordinates) - 1):
     res += dist
     time += dist / motor_speed
 
-print("\n Motor distance: ")
+print("\n Power distance: ")
 print(res * map_scale)
 print(" miles")
 
-print("\n Motor time: ")
+print("\n Power time: ")
 print(time)
 print(" hours")
 
-# light_wind = make_more_wind('100x100/wind_strength_more.csv', '100x100/wind_strength_1.csv', -1)
+# make_more_wind('100x100/wind_strength.csv', '100x100/wind_strength2.csv', 1)

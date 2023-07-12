@@ -1,6 +1,7 @@
+import csv
+
 import matplotlib.pyplot as plt
 from matplotlib import colors
-import csv
 
 
 def read_csv(filename):
