@@ -56,8 +56,6 @@ def make_grid(filename, depth):
         mas.append(l_replace2)
     return mas
 
-
-# Make more wind
 def make_more_wind(filename, file_res, param):
     global l_replace2
     arrayDepth = read_csv(filename)
@@ -69,7 +67,6 @@ def make_more_wind(filename, file_res, param):
         my_writer = csv.writer(file, delimiter=',')
         my_writer.writerows(mas)
     return mas
-
 
 # Make one combined map with wind & surface
 def wind_and_surface(file_wind, file_surface):
@@ -87,11 +84,11 @@ def wind_and_surface(file_wind, file_surface):
 # Get ready for the algorithm
 #############################################################################
 
-res = make_grid('100x100/wind_strength_more.csv', 1)
+res = make_grid('Data/100x100/wind_strength_more.csv', 1)
 mydata = res
 grid = np.array(mydata)
 
-data = read_csv('100x100/wind_strength_more.csv')
+data = read_csv('Data/100x100/wind_strength_more.csv')
 
 
 #############################################################################
@@ -113,8 +110,8 @@ def wind_heuristic(a, b, wind_str):
 # Load wind direction data
 #############################################################################
 
-wind_dir = read_csv('100x100/wind_direction.csv')
-wind_strength = read_csv('100x100/wind_strength_more.csv')
+wind_dir = read_csv('Data/100x100/wind_direction.csv')
+wind_strength = read_csv('Data/100x100/wind_strength_more.csv')
 
 ##############################################################################
 # Path finding function
@@ -311,7 +308,7 @@ for i in (range(0, len(h_route))):
 # Plot the path
 ##############################################################################
 # метод "совмещенной карты"
-data = read_csv('100x100/wind_strength_more.csv')
+data = read_csv('Data/100x100/wind_strength_more.csv')
 cmap = colors.ListedColormap(
     ['#6e6e6e', '#5069AB', '#39619f', '#427DA4', '#4a94a9', '#4C9094', '#4d8d7b', '#509969', '#53a553', '#46A246',
      '#359f35', '#7C9E44', '#a79d51', '#A38E46', '#9f7f3a', '#AC632C', '#b83c17', '#813a4e',
@@ -373,4 +370,4 @@ print("\n Power time: ")
 print(time)
 print(" hours")
 
-# make_more_wind('100x100/wind_strength.csv', '100x100/wind_strength2.csv', 1)
+
